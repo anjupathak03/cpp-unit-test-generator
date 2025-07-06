@@ -22,10 +22,22 @@ function injectGoalsConstraints(parts: PromptParts, ctx: BuildCtx): PromptParts 
       4. The tests should be self-contained and not require any external dependencies beyond the standard library and Google Test.
 
     CONSTRAINTS:
-      - Reply in strict YAML format.
+      - Allowed content in each test file:
+        • #include <gtest/gtest.h>
+        • #include "<header(s)_under_test>"
+        • One or more TEST(SuiteName, TestName) blocks.
+        • Built-in ASSERT_/EXPECT_ macros inline.
+      - DO NOT add:
+        • using directives or declarations
+        • helper functions, lambdas, custom matchers
+        • fixtures (TEST_F), parameterised/typed tests
+        • custom main(), mocks, global environments
+        • any non-standard headers
+      - Reply in strict YAML format as per OUTPUT spec.
       - Use only the C++17 standard library and the Google Test framework.
       - Adhere to Google's C++ Style Guide for the generated test code.
       - Do not use any mock objects unless explicitly requested.
+      - Two tests name can never be same
 
     TESTING GUIDELINES:
       - For each function or method, create a separate \`TEST\` or \`TEST_F\` block.
