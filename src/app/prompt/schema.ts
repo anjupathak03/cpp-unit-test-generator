@@ -1,9 +1,3 @@
-export interface PromptInput {
-    srcCode: string;
-    uncoveredLines: number[];
-    existingSigs: string;
-}
-
 export interface NewTestYaml {
     name: string;
     goal: string;
@@ -11,7 +5,6 @@ export interface NewTestYaml {
 }
 
 export interface LlmReply {
-    test_signatures: string;
     tests: NewTestYaml[];
     refactor_patch?: string;
 }

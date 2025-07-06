@@ -24,28 +24,38 @@ const cli = yargs(hideBin(process.argv))
   .scriptName('gen-unit-test')
   .command('prompt',  'print a prompt for the LLM',  y => y
       .option('src', { type: 'string', demandOption: true })
-      .option('root',{ type: 'string', default: '.' }),
+      .option('root',{ type: 'string', default: '.' })
+      .option('testFile',{ type: 'string' }),
     async argv => {
       const src = await fsx.read(argv.src);
+      let testFile = argv.testFile;
+      if (!testFile) testFile = argv.src.replace(/\.cpp$/, '_test.cpp');
+      const testText = await fsx.readIfExists(testFile);
       const prompt = buildPrompt({
         srcPath     : argv.src,
         srcText     : src,
         missedLines : [],
         prevFailures: [],
+        testText    : testText
       });
       console.log(prompt)
     })
 
   .command('llm', 'send prompt, show raw reply', y => y
       .option('src',{ type:'string', demandOption:true })
-      .option('root',{ type:'string', default:'.' }),
+      .option('root',{ type:'string', default:'.' })
+      .option('testFile',{ type: 'string' }),
     async argv => {
       const src = await fsx.read(argv.src);
+      let testFile = argv.testFile;
+      if (!testFile) testFile = argv.src.replace(/\.cpp$/, '_test.cpp');
+      const testText = await fsx.readIfExists(testFile);
       const prompt = buildPrompt({ 
         srcPath     : argv.src,
         srcText     : src,
         missedLines : [],
         prevFailures: [],
+        testText    : testText
       });
       const reply  = await llmFetch(prompt, new AbortController().signal);
       console.log(reply);
@@ -72,13 +82,15 @@ const cli = yargs(hideBin(process.argv))
       .option('src',     { type:'string', demandOption:true })
       .option('root',    { type:'string', default:'.' })
       .option('snippet', { type:'string', demandOption:true, desc:'path to .cpp containing one TEST()' })
-      .option('testFile',{ type:'string', default: a=>a.src.replace(/\.cpp$/,'_test.cpp') }),
+      .option('testFile',{ type:'string' }),
     async argv => {
       const snippet = await fsx.read(argv.snippet);
+      let testFile = argv.testFile;
+      if (!testFile) testFile = argv.src.replace(/\.cpp$/, '_test.cpp');
       const base    = await coverFile({ srcFile: argv.src, root: argv.root }, new AbortController().signal);
       const res     = await runOne({
         snippet: { code: snippet, name: 'CLI' },
-        cfg: { testFile: argv.testFile, srcFile: argv.src, root: argv.root, targetPct: 100 },
+        cfg: { testFile: testFile, srcFile: argv.src, root: argv.root, targetPct: 100 },
         coverageBase: base
       }, new AbortController().signal);
       console.log(res.verdict, res.coverage);

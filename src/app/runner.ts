@@ -3,6 +3,7 @@ import { fsx } from './utils/fsx.js';
 import { buildPrompt, validateReply } from './prompt/builder.js';
 import { fetch as llmFetch } from './llm/client.js';
 import { coverFile } from './coverage/llvm.js';
+import { findTestFile } from './utils/findTestFile.js';
 import { runOne } from './validator/singleTest.js';
 
 export interface Cfg {
@@ -20,11 +21,20 @@ export async function run(cfg: Cfg, signal: AbortSignal, bus = new EventBus()) {
   let cov = await coverFile(cfg, signal);
   for (let iter = 1; iter <= cfg.maxIter && cov.filePct < cfg.targetPct; iter++) {
 
-    const { prompt } = buildPrompt({
+    let testPath = cfg.testFile;
+    if (!testPath || !fsx.exists(testPath)) {
+      testPath = await findTestFile(cfg.srcFile, cfg.root)
+              ?? cfg.srcFile.replace(/\.cpp$/, '_test.cpp');  // last resort
+    }
+
+    const testOrig  = await fsx.readIfExists(testPath);
+
+    const prompt = buildPrompt({
       srcPath     : cfg.srcFile,
       srcText     : srcOrig,
       missedLines : cov.missedLines,
-      prevFailures: [],          // later you’ll push failed snippets
+      prevFailures: [],
+      testText    : testOrig
     });
 
     const reply = await llmFetch(prompt, signal);
