@@ -1,7 +1,6 @@
-import { randomUUID } from 'node:crypto';
 import { EventBus } from './events/bus.js';
 import { fsx } from './utils/fsx.js';
-import { builder } from './prompt/builder.js';
+import { buildPrompt, validateReply } from './prompt/builder.js';
 import { fetch as llmFetch } from './llm/client.js';
 import { coverFile } from './coverage/llvm.js';
 import { runOne } from './validator/singleTest.js';
@@ -15,30 +14,30 @@ export interface Cfg {
 }
 
 export async function run(cfg: Cfg, signal: AbortSignal, bus = new EventBus()) {
-  const id = randomUUID();
-  bus.emitEvent({ type: 'info', msg: `Session ${id}` });
-
   const srcOrig  = await fsx.read(cfg.srcFile);
   const testOrig = await fsx.readIfExists(cfg.testFile);
 
   let cov = await coverFile(cfg, signal);
   for (let iter = 1; iter <= cfg.maxIter && cov.filePct < cfg.targetPct; iter++) {
-    bus.emitEvent({ type: 'iteration', n: iter });
 
-    const prompt = builder.build({
-      srcCode: srcOrig,
-      uncoveredLines: cov.missedLines,
-      prevFailures: [],
-      cfg
+    const { prompt } = buildPrompt({
+      srcPath     : cfg.srcFile,
+      srcText     : srcOrig,
+      missedLines : cov.missedLines,
+      prevFailures: [],          // later you’ll push failed snippets
     });
 
-    const reply = await llmFetch(prompt, id, iter, signal);
-    if (!reply.new_tests?.length) continue;
+    const reply = await llmFetch(prompt, signal);
+    if (!validateReply(reply)) {
+      bus.emitEvent({ type:'error', msg:'❌ LLM reply schema-invalid, skipping' });
+      continue;
+    }
+    if (!reply.tests?.length) continue;
 
     if (reply.refactor_patch)
       bus.emitEvent({ type: 'warn', msg: 'Patch received – apply logic TBD' });
 
-    for (const t of reply.new_tests) {
+    for (const t of reply.tests) {
       const result = await runOne({
         snippet: { code: t.code, name: t.name },
         cfg,
@@ -51,7 +50,7 @@ export async function run(cfg: Cfg, signal: AbortSignal, bus = new EventBus()) {
     }
   }
 
-  if (cov.filePct <= 0) {  // nothing gained, roll back
+  if (cov.filePct <= 0) {
     await fsx.write(cfg.srcFile, srcOrig);
     if (testOrig) await fsx.write(cfg.testFile, testOrig);
     bus.emitEvent({ type: 'warn', msg: 'Rolled back — no coverage gain' });

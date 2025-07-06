@@ -2,7 +2,7 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import chalk from 'chalk';
-import { builder }           from './app/prompt/builder.js';
+import { buildPrompt }           from './app/prompt/builder.js';
 import { coverFile }         from './app/coverage/llvm.js';
 import { compileAndRun }     from './app/compiler/build.js';
 import { runOne }            from './app/validator/singleTest.js';
@@ -27,22 +27,27 @@ const cli = yargs(hideBin(process.argv))
       .option('root',{ type: 'string', default: '.' }),
     async argv => {
       const src = await fsx.read(argv.src);
-      const prompt = builder.build({
-        srcCode: src,
-        uncoveredLines: [/*demo*/],
+      const prompt = buildPrompt({
+        srcPath     : argv.src,
+        srcText     : src,
+        missedLines : [],
         prevFailures: [],
-        cfg: { srcFile: argv.src }
       });
       console.log(prompt)
     })
 
-  .command('llm',     'send prompt, show raw reply', y => y
+  .command('llm', 'send prompt, show raw reply', y => y
       .option('src',{ type:'string', demandOption:true })
       .option('root',{ type:'string', default:'.' }),
     async argv => {
       const src = await fsx.read(argv.src);
-      const prompt = builder.build({ srcCode: src, uncoveredLines:[], prevFailures:[], cfg:{ srcFile:argv.src }});
-      const reply  = await llmFetch(prompt, 'demo-session', 1, new AbortController().signal);
+      const prompt = buildPrompt({ 
+        srcPath     : argv.src,
+        srcText     : src,
+        missedLines : [],
+        prevFailures: [],
+      });
+      const reply  = await llmFetch(prompt, new AbortController().signal);
       console.log(reply);
     })
 

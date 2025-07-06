@@ -1,41 +1,60 @@
-import { PromptInput } from './schema.js';
-export const builder = {
-  build(o: {
-    srcCode: string;
-    uncoveredLines: number[];
-    prevFailures: string[];
-    cfg: { srcFile: string };
-  }) {
-    return `
-=== ROLE ===
-You are *CppTestBot*. Increase line coverage of the GIVEN file.
+import dedent from 'dedent';
+import crypto from 'node:crypto';
+import Ajv2020 from 'ajv/dist/2020'; // Updated import
+import { replySchema } from './replyschema';
+import { assemble, PromptParts } from './parts.js';
+import { defaultMiddleware, BuildCtx, Middleware } from './middleware.js';
+import { cfg as userCfg } from './config.js';
 
-=== FILE: ${o.cfg.srcFile} ===
-${o.srcCode}
+const ajv = new Ajv2020(); // Updated instantiation
 
-=== MUST COVER (line numbers) ===
-${o.uncoveredLines.join(' ')}
+export const validateReply = ajv.compile(replySchema);
 
-${o.prevFailures.length ? `=== PREVIOUS FAILURES ===\n${o.prevFailures.join('\n\n')}` : ''}
+export interface BuildOpts {
+  srcPath     : string;
+  srcText     : string;
+  missedLines : number[];
+  prevFailures: string[];
+  middlewares?: Middleware[];
+}
 
-=== OUTPUT (YAML) ===
-language: cpp
-existing_test_signatures: |
-  # leave empty if no tests yet
-new_tests:
-  - name: <CamelCase>
-    goal: |
-      <short description>
-    code: |
-      #include <gtest/gtest.h>
-      // ...
-    extra_includes: |
-      #include <vector>
-    build_snippets: |
-      # optional cmake or install lines
-    tags: [unit]
+export function buildPrompt(opts: BuildOpts): string {
+  /* 1️⃣ core parts (plain, unmodified) */
+  const parts: PromptParts = {
+    header: dedent`
+      C++ Unit Test Generation Request
 
-# Optionally include refactor_patch: |
-`;
-  }
-};
+    `,
+    source: 
+      `=== C++ Source Code to be Tested: ===
+      ${opts.srcText}
+    `,
+    coverage: dedent`
+      === TARGET_LINES ===
+      ${opts.missedLines.join(' ') || 'ALL'}
+    `,
+    footer: dedent`
+      === OUTPUT_SPEC ===
+      existing_signatures: |
+        # leave blank if none
+      tests:
+        - name: CamelCaseName123
+          goal: |
+            Short behaviour description.
+          code: |
+            #include <gtest/gtest.h>
+            // ...    `
+  };
+
+  /* 2️⃣ apply middleware chain */
+  const ctx: BuildCtx = {
+    missed: opts.missedLines,
+    prevFailures: opts.prevFailures
+  };
+  const allMw = [...defaultMiddleware, ...(opts.middlewares || [])];
+  const finalParts = allMw.reduce((acc, mw) => mw(acc, ctx), parts);
+
+  const prompt = assemble(finalParts);
+  return prompt;
+}
+
