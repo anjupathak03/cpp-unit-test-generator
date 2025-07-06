@@ -43,11 +43,14 @@ export async function fixTestFile(config: TestFixConfig): Promise<TestFixResult>
     attempts++;
     console.log(chalk.blue(`\n🔄 Attempt ${attempts}/${maxAttempts}`));
 
-    // Test current content
+    // Test current content with error capture
     console.log(chalk.gray('  🔨 Testing current test file...'));
-    const testPassed = await compileAndRun({ root, testTarget: 'ut_bin' }, signal);
+    const compilationResult = await compileAndRun({ 
+      root, 
+      testTarget: 'ut_bin'
+    }, signal);
     
-    if (testPassed) {
+    if (compilationResult.success) {
       console.log(chalk.green(`  ✅ Test file compiles and runs successfully!`));
       return {
         success: true,
@@ -57,6 +60,9 @@ export async function fixTestFile(config: TestFixConfig): Promise<TestFixResult>
     }
 
     console.log(chalk.red(`  ❌ Test file failed compilation/testing`));
+    if (compilationResult.errors) {
+      console.log(chalk.gray(`  📋 Error details captured for LLM analysis`));
+    }
 
     // If this is the last attempt, don't try to fix
     if (attempts >= maxAttempts) {
@@ -77,7 +83,8 @@ export async function fixTestFile(config: TestFixConfig): Promise<TestFixResult>
         srcFile,
         testFile,
         root,
-        signal
+        signal,
+        compilationErrors: compilationResult.errors
       });
 
       if (fixedContent && fixedContent !== currentContent) {
@@ -90,9 +97,12 @@ export async function fixTestFile(config: TestFixConfig): Promise<TestFixResult>
         
         // Test the fixed content
         console.log(chalk.gray('  🔨 Testing fixed test file...'));
-        const fixedTestPassed = await compileAndRun({ root, testTarget: 'ut_bin' }, signal);
+        const fixedTestResult = await compileAndRun({ 
+          root, 
+          testTarget: 'ut_bin'
+        }, signal);
         
-        if (fixedTestPassed) {
+        if (fixedTestResult.success) {
           console.log(chalk.green(`  ✅ Fixed test file compiles and runs successfully!`));
           // Clean up temp file
           await fsp.rm(tempTestFile, { force: true });
@@ -132,13 +142,15 @@ async function attemptTestFix({
   srcFile,
   testFile,
   root,
-  signal
+  signal,
+  compilationErrors
 }: {
   testContent: string;
   srcFile: string;
   testFile: string;
   root: string;
   signal: AbortSignal;
+  compilationErrors?: string;
 }): Promise<string | null> {
   const srcContent = await fsx.read(srcFile);
   const srcRelativePath = path.relative(root, srcFile);
@@ -157,14 +169,18 @@ async function attemptTestFix({
     File: ${testRelativePath}
     ${testContent}
 
+    ${compilationErrors ? `=== COMPILATION ERRORS ===
+    ${compilationErrors}` : ''}
+
     === INSTRUCTIONS ===
-    1. Analyze the test file for compilation errors, syntax issues, or logical problems
+    1. Analyze the compilation errors and test file for issues
     2. Fix include statements, missing dependencies, or incorrect test syntax
     3. Ensure all Google Test macros are properly formatted
     4. Verify that the test file correctly includes the source file being tested
     5. Make sure all necessary standard library includes are present
     6. Fix any namespace issues or scope problems
     7. Ensure proper test structure and assertions
+    8. Pay attention to any specific error messages from the compiler
 
     === OUTPUT FORMAT ===
     Provide ONLY the corrected test file content without any markdown formatting or explanations.
@@ -274,9 +290,12 @@ export async function applyAndValidateTestsWithFixing({
             console.log(chalk.green(`  ✅ Auto-fix successful after ${fixResult.attempts} attempts`));
             
             // Test the fixed content
-            const fixedCompiled = await compileAndRun({ root: cfg.root, testTarget: 'ut_bin' }, signal);
+            const fixedCompiled = await compileAndRun({ 
+              root: cfg.root, 
+              testTarget: 'ut_bin'
+            }, signal);
             
-            if (fixedCompiled) {
+            if (fixedCompiled.success) {
               // Commit the fixed content
               await fsx.write(testFile, fixResult.finalContent);
               console.log(chalk.green(`  ✅ Fixed test "${newTest.name}" committed`));
