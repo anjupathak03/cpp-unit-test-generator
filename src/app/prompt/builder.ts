@@ -4,7 +4,6 @@ import Ajv2020 from 'ajv/dist/2020'; // Updated import
 import { replySchema } from './replyschema';
 import { assemble, PromptParts } from './parts.js';
 import { defaultMiddleware, BuildCtx, Middleware } from './middleware.js';
-import { cfg as userCfg } from './config.js';
 
 const ajv = new Ajv2020(); // Updated instantiation
 
@@ -16,10 +15,17 @@ export interface BuildOpts {
   missedLines : number[];
   prevFailures: string[];
   middlewares?: Middleware[];
+  testText?   : string;
 }
 
 export function buildPrompt(opts: BuildOpts): string {
   /* 1️⃣ core parts (plain, unmodified) */
+
+  // Determine existing test content, treating empty or whitespace-only as no file
+  const existingContent = opts.testText && opts.testText.trim() !== ''
+  ? opts.testText
+  : 'No existing test file provided.';
+
   const parts: PromptParts = {
     header: dedent`
       C++ Unit Test Generation Request
@@ -29,14 +35,14 @@ export function buildPrompt(opts: BuildOpts): string {
       `=== C++ Source Code to be Tested: ===
       ${opts.srcText}
     `,
+    existing: `=== CURRENT_TEST_FILE ===
+      ${existingContent}`,
     coverage: dedent`
       === TARGET_LINES ===
       ${opts.missedLines.join(' ') || 'ALL'}
     `,
     footer: dedent`
       === OUTPUT_SPEC ===
-      existing_signatures: |
-        # leave blank if none
       tests:
         - name: CamelCaseName123
           goal: |

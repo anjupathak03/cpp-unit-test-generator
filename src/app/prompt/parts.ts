@@ -1,12 +1,13 @@
 export interface PromptParts {
   header: string;
   source: string;
+  existing: string;
   coverage: string;
   footer: string;
 }
 
 export function assemble(p: PromptParts): string {
-  return [p.header, p.source, p.coverage, p.footer]
+  return [p.header, p.source, p.existing, p.coverage, p.footer]
     .filter(Boolean)
     .join('\n\n')
     .trim() + '\n';
