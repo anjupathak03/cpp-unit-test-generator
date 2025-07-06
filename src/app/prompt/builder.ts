@@ -1,13 +1,6 @@
 import dedent from 'dedent';
-import crypto from 'node:crypto';
-import Ajv2020 from 'ajv/dist/2020'; // Updated import
-import { replySchema } from './replyschema';
 import { assemble, PromptParts } from './parts.js';
 import { defaultMiddleware, BuildCtx, Middleware } from './middleware.js';
-
-const ajv = new Ajv2020(); // Updated instantiation
-
-export const validateReply = ajv.compile(replySchema);
 
 export interface BuildOpts {
   srcPath     : string;
@@ -47,9 +40,12 @@ export function buildPrompt(opts: BuildOpts): string {
         - name: CamelCaseName123
           goal: |
             Short behaviour description.
+          includes: |
+            - <gtest/gtest.h>
+            - "foo.h"
           code: |
-            #include <gtest/gtest.h>
-            // ...    `
+            TEST(Foo, DoesX) { … }
+    `,
   };
 
   /* 2️⃣ apply middleware chain */

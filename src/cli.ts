@@ -57,7 +57,7 @@ const cli = yargs(hideBin(process.argv))
         prevFailures: [],
         testText    : testText
       });
-      const reply  = await llmFetch(prompt, new AbortController().signal);
+      const reply  = await llmFetch(prompt);
       console.log(reply);
     })
 

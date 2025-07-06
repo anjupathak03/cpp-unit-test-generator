@@ -1,6 +1,6 @@
 import { EventBus } from './events/bus.js';
 import { fsx } from './utils/fsx.js';
-import { buildPrompt, validateReply } from './prompt/builder.js';
+import { buildPrompt } from './prompt/builder.js';
 import { fetch as llmFetch } from './llm/client.js';
 import { coverFile } from './coverage/llvm.js';
 import { findTestFile } from './utils/findTestFile.js';
@@ -37,15 +37,8 @@ export async function run(cfg: Cfg, signal: AbortSignal, bus = new EventBus()) {
       testText    : testOrig
     });
 
-    const reply = await llmFetch(prompt, signal);
-    if (!validateReply(reply)) {
-      bus.emitEvent({ type:'error', msg:'❌ LLM reply schema-invalid, skipping' });
-      continue;
-    }
+    const reply = await llmFetch(prompt);
     if (!reply.tests?.length) continue;
-
-    if (reply.refactor_patch)
-      bus.emitEvent({ type: 'warn', msg: 'Patch received – apply logic TBD' });
 
     for (const t of reply.tests) {
       const result = await runOne({
