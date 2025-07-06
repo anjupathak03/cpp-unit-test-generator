@@ -1,27 +1,21 @@
-import type { PromptParts } from './parts.js';
+import { PromptParts } from './parts.js';
 
 /* Extend or replace in user-land */
-export type Middleware = (p: PromptParts, ctx: BuildCtx) => PromptParts;
 export interface BuildCtx {
   missed: number[];
   prevFailures: string[];
 }
 
-export const defaultMiddleware: Middleware[] = [
-  injectGoalsConstraints,
-  injectPrevFailures,
-];
+export type Middleware = (parts: PromptParts, ctx: BuildCtx) => PromptParts;
 
 function injectGoalsConstraints(parts: PromptParts, ctx: BuildCtx): PromptParts {
   const goals = `
     GOALS:
-      1. Achieve comprehensive test coverage for the C++ source code provided below.
-      2. Specifically, ensure the generated tests cover the following missed lines:
-          - ${ctx.missed.join(', ') || 'ANY new line'}
-      3. Produce valid, modern C++17 Google Test code that is well-structured and easy to understand.
-      4. The tests should be self-contained and not require any external dependencies beyond the standard library and Google Test.
-      5. Each test should be in entirety
-      6. the test file must compile
+      1. Generate comprehensive unit tests for the C++ source code provided below.
+      2. Produce valid, modern C++17 Google Test code that is well-structured and easy to understand.
+      3. The tests should be self-contained and not require any external dependencies beyond the standard library and Google Test.
+      4. Each test should be in entirety
+      5. The test file must compile
 
     CONSTRAINTS:
       - Allowed content in each test file:
@@ -43,7 +37,7 @@ function injectGoalsConstraints(parts: PromptParts, ctx: BuildCtx): PromptParts 
       - Two tests name can never be same
 
     TESTING GUIDELINES:
-      - For each function or method, create a separate \`TEST\` or \`TEST_F\` block.
+      - For each function or method, create a separate \`TEST\` or \`TEST_F\`
       - Test for a variety of input values, including:
       - Typical use cases.
       - Edge cases (e.g., empty strings, zero values, null pointers, large numbers).
@@ -56,12 +50,6 @@ function injectGoalsConstraints(parts: PromptParts, ctx: BuildCtx): PromptParts 
   return { ...parts, header: parts.header + goals };
 }
 
-function injectPrevFailures(parts: PromptParts, ctx: BuildCtx): PromptParts {
-  if (!ctx.prevFailures.length) return parts;
-  return {
-    ...parts,
-    footer: parts.footer +
-      '\nPREVIOUS_FAILURES:\n' +
-      ctx.prevFailures.join('\n\n')
-  };
-}
+export const defaultMiddleware: Middleware[] = [
+  injectGoalsConstraints,
+];

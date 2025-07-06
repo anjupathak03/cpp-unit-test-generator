@@ -2,6 +2,7 @@
 import { promises as fsp } from 'node:fs';
 import path from 'node:path';
 import { NewTestYaml } from '../prompt/schema.js';
+import chalk from 'chalk';
 
 /**
  * Resolve include path based on the test file location and project structure
@@ -139,13 +140,17 @@ export async function appendTest(
   newTest: NewTestYaml,
   srcFile?: string,
 ): Promise<void> {
+  console.log(chalk.gray(`  📝 Appending test "${newTest.name}" to ${testFile}`));
+  
   /* --------------------------------------------------------------- */
   /* 1️⃣  Read existing file (may be empty / missing)                 */
   /* --------------------------------------------------------------- */
   let existing = '';
   try {
     existing = await fsp.readFile(testFile, 'utf8');
+    console.log(chalk.gray(`  📖 Read existing file (${existing.length} characters)`));
   } catch {
+    console.log(chalk.gray('  📖 File does not exist - will create new'));
     /* file does not exist → keep existing = '' */
   }
 
@@ -154,6 +159,7 @@ export async function appendTest(
   /* --------------------------------------------------------------- */
   /* 2️⃣  INCLUDE-merge with path resolution                          */
   /* --------------------------------------------------------------- */
+  console.log(chalk.gray('  🔍 Processing includes...'));
   const incRx = /^\s*#\s*include\s+[<"].+[>"]/;
   const currentIncludes = new Set(lines.filter(l => incRx.test(l)).map(l => l.trim()));
 
@@ -179,6 +185,13 @@ export async function appendTest(
   const requiredIncludes = await Promise.all((newTest.includes ?? []).map(normalize));
   const missingIncludes  = requiredIncludes.filter(i => !currentIncludes.has(i));
 
+  if (missingIncludes.length > 0) {
+    console.log(chalk.gray(`  📝 Adding ${missingIncludes.length} missing include(s):`));
+    missingIncludes.forEach(inc => console.log(chalk.gray(`    + ${inc}`)));
+  } else {
+    console.log(chalk.gray('  ✅ All required includes already present'));
+  }
+
   const lastIncIdx = lines.reduce((idx, l, i) => (incRx.test(l) ? i : idx), -1);
   if (missingIncludes.length) {
     const insertAt = lastIncIdx >= 0 ? lastIncIdx + 1 : 0;
@@ -188,23 +201,26 @@ export async function appendTest(
   /* --------------------------------------------------------------- */
   /* 3️⃣  Duplicate-test check                                       */
   /* --------------------------------------------------------------- */
+  console.log(chalk.gray('  🔍 Checking for duplicate test...'));
   const alreadyExists = new RegExp(`\\b${newTest.name}\\b`).test(existing);
   if (!alreadyExists) {
+    console.log(chalk.gray('  ✅ Test name is unique - will append'));
     if (lines.length && lines[lines.length - 1].trim() !== '') lines.push('');
     lines.push(
       `// ─── AUTO-GENERATED TEST: ${newTest.name} ───`,
       newTest.code.trim(),
       '',
     );
-  }
-
-  if (!missingIncludes.length && alreadyExists) {
-    return; // nothing new to add
+  } else {
+    console.log(chalk.yellow(`  ⚠️  Test "${newTest.name}" already exists - skipping`));
   }
 
   /* --------------------------------------------------------------- */
-  /* 4️⃣  Persist                                                     */
+  /* 4️⃣  Write back                                                 */
   /* --------------------------------------------------------------- */
-  await fsp.mkdir(path.dirname(testFile), { recursive: true });
-  await fsp.writeFile(testFile, lines.join('\n'), 'utf8');
+  if (!alreadyExists) {
+    console.log(chalk.gray('  💾 Writing updated test file...'));
+    await fsp.writeFile(testFile, lines.join('\n'), 'utf8');
+    console.log(chalk.green(`  ✅ Test "${newTest.name}" successfully appended`));
+  }
 }
