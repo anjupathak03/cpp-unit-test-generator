@@ -116,12 +116,16 @@ const cli = yargs(hideBin(process.argv))
   .command('run', 'full test generation (default)', y => y
       .option('src',     { type:'string', demandOption:true })
       .option('root',    { type:'string', default:'.' })
-      .option('bypassValidation', { type:'boolean', default:true, desc:'Skip validation and directly write tests' }),
+      .option('bypassValidation', { type:'boolean', default:true, desc:'Skip validation and directly write tests' })
+      .option('enableAutoFix', { type:'boolean', default:true, desc:'Enable automatic test fixing when compilation fails' })
+      .option('maxFixAttempts', { type:'number', default:3, desc:'Maximum number of fix attempts' }),
     async argv => {
       console.log(chalk.blue('🚀 Starting full test generation workflow...'));
       console.log(chalk.gray(`📁 Source file: ${argv.src}`));
       console.log(chalk.gray(`📁 Root directory: ${argv.root}`));
       console.log(chalk.gray(`⚡ Bypass validation: ${argv.bypassValidation}`));
+      console.log(chalk.gray(`🔧 Auto-fix enabled: ${argv.enableAutoFix}`));
+      console.log(chalk.gray(`🔄 Max fix attempts: ${argv.maxFixAttempts}`));
       
       const ac = new AbortController();
       process.on('SIGINT', () => ac.abort());
@@ -130,8 +134,51 @@ const cli = yargs(hideBin(process.argv))
         srcFile : argv.src,
         testFile: replaceWithTestExtension(argv.src),
         root    : argv.root,
-        bypassValidation: argv.bypassValidation
+        bypassValidation: argv.bypassValidation,
+        enableAutoFix: argv.enableAutoFix,
+        maxFixAttempts: argv.maxFixAttempts
       }, ac.signal);
+    })
+
+  .command('fix', 'attempt to fix a failing test file', y => y
+      .option('test',    { type:'string', demandOption:true, desc:'Path to the test file to fix' })
+      .option('src',     { type:'string', demandOption:true, desc:'Path to the source file being tested' })
+      .option('root',    { type:'string', default:'.', desc:'Project root directory' })
+      .option('maxAttempts', { type:'number', default:3, desc:'Maximum number of fix attempts' }),
+    async argv => {
+      console.log(chalk.blue('🔧 Starting test file fixing...'));
+      console.log(chalk.gray(`📝 Test file: ${argv.test}`));
+      console.log(chalk.gray(`📝 Source file: ${argv.src}`));
+      console.log(chalk.gray(`📁 Root directory: ${argv.root}`));
+      console.log(chalk.gray(`🔄 Max attempts: ${argv.maxAttempts}`));
+      
+      const ac = new AbortController();
+      process.on('SIGINT', () => ac.abort());
+      
+      const { fixTestFile } = await import('./app/utils/testFixer.js');
+      
+      const result = await fixTestFile({
+        testFile: argv.test,
+        srcFile: argv.src,
+        root: argv.root,
+        maxAttempts: argv.maxAttempts,
+        signal: ac.signal
+      });
+      
+      if (result.success) {
+        console.log(chalk.green(`🎉 Test file fixed successfully after ${result.attempts} attempts!`));
+        if (result.finalContent) {
+          // Write the fixed content back to the test file
+          const { fsx } = await import('./app/utils/fsx.js');
+          await fsx.write(argv.test, result.finalContent);
+          console.log(chalk.green(`✅ Fixed content written to ${argv.test}`));
+        }
+      } else {
+        console.log(chalk.red(`❌ Failed to fix test file after ${result.attempts} attempts`));
+        if (result.error) {
+          console.log(chalk.red(`Error: ${result.error}`));
+        }
+      }
     })
 
   .demandCommand(1)
