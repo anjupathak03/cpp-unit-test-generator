@@ -4,20 +4,29 @@ import { LlmReply } from '../prompt/schema.js';
 import yaml from 'js-yaml';
 
 // Initialize Ollama instance with the specific host
-const ollama = new Ollama({ host: 'http://192.168.0.10:11434' });
+const ollama = new Ollama({ host: 'http://192.168.176.69:11434' });
 
-export async function fetch(prompt: string): Promise<LlmReply> {
-  const ollamaResponse = await ollama.generate({
+export async function fetch(prompt: string, signal?: AbortSignal): Promise<LlmReply> {
+  // Create a promise that rejects when the signal is aborted
+  const abortPromise = new Promise<never>((_, reject) => {
+    if (signal) {
+      signal.addEventListener('abort', () => reject(new Error('Request aborted')));
+    }
+  });
+
+  // Create the Ollama request promise
+  const ollamaPromise = ollama.generate({
     model: 'gemma:7b',
     prompt: prompt,
     stream: false
-  }) as GenerateResponse;
+  }) as Promise<GenerateResponse>;
+
+  // Race between the Ollama request and the abort signal
+  const ollamaResponse = await Promise.race([ollamaPromise, abortPromise]);
 
   // Extract the response content from the Ollama response
   const responseText = ollamaResponse.response;
-  
-  console.log('LLM response:', responseText);
-  if (!responseText) {
+    if (!responseText) {
     throw new Error('No response content received from LLM');
   }
 

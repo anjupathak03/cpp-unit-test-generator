@@ -5,6 +5,7 @@ import { fetch as llmFetch } from './llm/client.js';
 import { coverFile } from './coverage/llvm.js';
 import { findTestFile } from './utils/findTestFile.js';
 import { applyAndValidateTests } from './utils/applyAndValidateTests.js';
+import { replaceWithTestExtension } from './utils/fileExtensions.js';
 
 export interface Cfg {
   srcFile: string;
@@ -24,7 +25,7 @@ export async function run(cfg: Cfg, signal: AbortSignal, bus = new EventBus()) {
     let testPath = cfg.testFile;
     if (!testPath || !fsx.exists(testPath)) {
       testPath = await findTestFile(cfg.srcFile, cfg.root)
-              ?? cfg.srcFile.replace(/\.cpp$/, '_test.cpp');  // last resort
+              ?? replaceWithTestExtension(cfg.srcFile);  // last resort
     }
 
     const testOrig  = await fsx.readIfExists(testPath);
@@ -34,12 +35,10 @@ export async function run(cfg: Cfg, signal: AbortSignal, bus = new EventBus()) {
       srcText     : srcOrig,
       missedLines : cov.missedLines,
       prevFailures: [],
-      testText    : testOrig,
-      testPath    : testPath,
-      root        : cfg.root
+      testText    : testOrig
     });
 
-    const reply = await llmFetch(prompt);
+    const reply = await llmFetch(prompt, signal);
 
     console.log(reply)
     if (!reply.tests?.length) continue;

@@ -10,6 +10,7 @@ import { run as runFull }    from './app/runner.js';
 import { EventBus }          from './app/events/bus.js';
 import { fsx }               from './app/utils/fsx.js';
 import { fetch as llmFetch } from './app/llm/client.js';
+import { replaceWithTestExtension } from './app/utils/fileExtensions.js';
 
 const bus = new EventBus();
 bus.onAll(e => {
@@ -29,16 +30,14 @@ const cli = yargs(hideBin(process.argv))
     async argv => {
       const src = await fsx.read(argv.src);
       let testFile = argv.testFile;
-      if (!testFile) testFile = argv.src.replace(/\.cpp$/, '_test.cpp');
+      if (!testFile) testFile = replaceWithTestExtension(argv.src);
       const testText = await fsx.readIfExists(testFile);
       const prompt = buildPrompt({
         srcPath     : argv.src,
         srcText     : src,
         missedLines : [],
         prevFailures: [],
-        testText    : testText,
-        testPath    : testFile,
-        root        : argv.root
+        testText    : testText
       });
       console.log(prompt)
     })
@@ -48,9 +47,12 @@ const cli = yargs(hideBin(process.argv))
       .option('root',{ type:'string', default:'.' })
       .option('testFile',{ type: 'string' }),
     async argv => {
+      const ac = new AbortController();
+      process.on('SIGINT', () => ac.abort());
+      
       const src = await fsx.read(argv.src);
       let testFile = argv.testFile;
-      if (!testFile) testFile = argv.src.replace(/\.cpp$/, '_test.cpp');
+      if (!testFile) testFile = replaceWithTestExtension(argv.src);
       const testText = await fsx.readIfExists(testFile);
       const prompt = buildPrompt({ 
         srcPath     : argv.src,
@@ -61,7 +63,7 @@ const cli = yargs(hideBin(process.argv))
         testPath    : testFile,
         root        : argv.root
       });
-      const reply  = await llmFetch(prompt);
+      const reply  = await llmFetch(prompt, ac.signal);
       console.log(reply);
     })
 
@@ -69,7 +71,9 @@ const cli = yargs(hideBin(process.argv))
       .option('root',   { type:'string', default:'.' })
       .option('target', { type:'string', default:'ut_bin' }),
     async argv => {
-      const ok = await compileAndRun({ root: argv.root, testTarget: argv.target }, new AbortController().signal);
+      const ac = new AbortController();
+      process.on('SIGINT', () => ac.abort());
+      const ok = await compileAndRun({ root: argv.root, testTarget: argv.target }, ac.signal);
       console.log(ok ? chalk.green('PASS') : chalk.red('FAIL'));
     })
 
@@ -77,7 +81,9 @@ const cli = yargs(hideBin(process.argv))
       .option('src',  { type:'string', demandOption:true })
       .option('root', { type:'string', default:'.' }),
     async argv => {
-      const snap = await coverFile({ srcFile: argv.src, root: argv.root }, new AbortController().signal);
+      const ac = new AbortController();
+      process.on('SIGINT', () => ac.abort());
+      const snap = await coverFile({ srcFile: argv.src, root: argv.root }, ac.signal);
       console.log(chalk.green(`${snap.filePct.toFixed(2)} % file, ${snap.projectPct.toFixed(2)} % project`));
       console.log('Missed lines:', snap.missedLines.slice(0,15).join(', '), '...');
     })
@@ -85,18 +91,21 @@ const cli = yargs(hideBin(process.argv))
   .command('validate','append snippet, compile, measure', y => y
       .option('src',     { type:'string', demandOption:true })
       .option('root',    { type:'string', default:'.' })
-      .option('snippet', { type:'string', demandOption:true, desc:'path to .cpp containing one TEST()' })
+      .option('snippet', { type:'string', demandOption:true, desc:'path to C++ file containing one TEST()' })
       .option('testFile',{ type:'string' }),
     async argv => {
+      const ac = new AbortController();
+      process.on('SIGINT', () => ac.abort());
+      
       const snippet = await fsx.read(argv.snippet);
       let testFile = argv.testFile;
-      if (!testFile) testFile = argv.src.replace(/\.cpp$/, '_test.cpp');
-      const base    = await coverFile({ srcFile: argv.src, root: argv.root }, new AbortController().signal);
+      if (!testFile) testFile = replaceWithTestExtension(argv.src);
+      const base    = await coverFile({ srcFile: argv.src, root: argv.root }, ac.signal);
       const res     = await runOne({
         snippet: { code: snippet, name: 'CLI' },
         cfg: { testFile: testFile, srcFile: argv.src, root: argv.root, targetPct: 100 },
         coverageBase: base
-      }, new AbortController().signal);
+      }, ac.signal);
       console.log(res.verdict, res.coverage);
     })
 
@@ -110,7 +119,7 @@ const cli = yargs(hideBin(process.argv))
       process.on('SIGINT', () => ac.abort());
       await runFull({
         srcFile : argv.src,
-        testFile: argv.src.replace(/\.cpp$/,'_test.cpp'),
+        testFile: replaceWithTestExtension(argv.src),
         root    : argv.root,
         targetPct: argv.target,
         maxIter : argv.maxIter

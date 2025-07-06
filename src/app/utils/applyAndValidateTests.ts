@@ -8,7 +8,7 @@ import path from 'node:path';
 
 /**
  * For each test in newTests, operate on a replica of the test file, append, validate, and commit or rollback.
- * @param testFile Path to the main test file (e.g., foo_test.cpp)
+ * @param testFile Path to the main test file (e.g., foo_test.cpp, foo_test.cc, etc.)
  * @param newTests Array of NewTestYaml objects
  * @param cfg      Validation config (srcFile, root, targetPct, etc.)
  * @param coverageBase Initial coverage snapshot
@@ -41,7 +41,7 @@ export async function applyAndValidateTests({
     }
 
     // Append the new test to the replica
-    await appendTest(replicaPath, newTest);
+    await appendTest(replicaPath, newTest, cfg.srcFile);
 
     // Validate the replica
     const result = await runOne({
