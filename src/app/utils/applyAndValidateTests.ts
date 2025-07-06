@@ -64,7 +64,12 @@ export async function applyAndValidateTests({
 
       // Validate the replica by compiling and running
       console.log(chalk.gray('  🔨 Validating replica by compiling and running'));
-      const compiled = await compileAndRun({ root: cfg.root, testTarget: 'ut_bin' }, signal);
+      let compiled;
+      if ((cfg as any).gpp) {
+        compiled = await compileAndRun({ root: cfg.root, testFile: replicaPath, mode: 'g++' }, signal);
+      } else {
+        compiled = await compileAndRun({ root: cfg.root, testTarget: 'ut_bin' }, signal);
+      }
       
       if (compiled) {
         // Commit: write the replica back to the main test file

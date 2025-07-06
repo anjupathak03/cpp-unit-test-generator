@@ -5,14 +5,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "tsx src/cli.ts"
+    "start": "tsx src/cli.ts",
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@types/js-yaml": "^4.0.9",
-    "ajv": "^8.17.1",
     "axios": "^1.10.0",
     "chalk": "^5.4.1",
     "dedent": "^1.6.0",
