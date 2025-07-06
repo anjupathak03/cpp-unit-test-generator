@@ -4,7 +4,7 @@ import { buildPrompt } from './prompt/builder.js';
 import { fetch as llmFetch } from './llm/client.js';
 import { coverFile } from './coverage/llvm.js';
 import { findTestFile } from './utils/findTestFile.js';
-import { runOne } from './validator/singleTest.js';
+import { applyAndValidateTests } from './utils/applyAndValidateTests.js';
 
 export interface Cfg {
   srcFile: string;
@@ -38,19 +38,25 @@ export async function run(cfg: Cfg, signal: AbortSignal, bus = new EventBus()) {
     });
 
     const reply = await llmFetch(prompt);
+
+    console.log(reply)
     if (!reply.tests?.length) continue;
 
-    for (const t of reply.tests) {
-      const result = await runOne({
-        snippet: { code: t.code, name: t.name },
-        cfg,
-        coverageBase: cov
-      }, signal);
+    const results = await applyAndValidateTests({
+      testFile: testPath,
+      newTests: reply.tests,
+      cfg: { ...cfg, testFile: testPath },
+      coverageBase: cov,
+      signal
+    });
 
-      bus.emitEvent({ type: 'test-result', name: t.name, verdict: result.verdict });
-      cov = result.coverage;
-      bus.emitEvent({ type: 'coverage', pct: cov.filePct });
+    // Emit events for each test result
+    for (const r of results) {
+      bus.emitEvent({ type: 'test-result', name: r.name, verdict: r.verdict as 'pass' | 'fail' | 'noCov' | 'overallInc' });
     }
+    // Recalculate coverage after all tests
+    cov = await coverFile(cfg, signal);
+    bus.emitEvent({ type: 'coverage', pct: cov.filePct });
   }
 
   if (cov.filePct <= 0) {
