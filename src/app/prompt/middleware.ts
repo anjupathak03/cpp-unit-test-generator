@@ -20,6 +20,8 @@ function injectGoalsConstraints(parts: PromptParts, ctx: BuildCtx): PromptParts 
           - ${ctx.missed.join(', ') || 'ANY new line'}
       3. Produce valid, modern C++17 Google Test code that is well-structured and easy to understand.
       4. The tests should be self-contained and not require any external dependencies beyond the standard library and Google Test.
+      5. Each test should be in entirety
+      6. the test file must compile
 
     CONSTRAINTS:
       - Allowed content in each test file:
@@ -32,7 +34,8 @@ function injectGoalsConstraints(parts: PromptParts, ctx: BuildCtx): PromptParts 
         • helper functions, lambdas, custom matchers
         • fixtures (TEST_F), parameterised/typed tests
         • custom main(), mocks, global environments
-        • any non-standard headers
+        • do not use any mocking
+        • do not use any non-standard headers
       - Reply in strict YAML format as per OUTPUT spec.
       - Use only the C++17 standard library and the Google Test framework.
       - Adhere to Google's C++ Style Guide for the generated test code.
@@ -47,6 +50,7 @@ function injectGoalsConstraints(parts: PromptParts, ctx: BuildCtx): PromptParts 
       - Invalid inputs that should trigger error handling or assertions.
       - Use descriptive names for your test cases and individual tests that clearly indicate their purpose.
       - Employ a clear "Arrange, Act, Assert" pattern within each test.
+      - Use the AAA style but fill each section with concrete code.  
       - Use appropriate Google Test matchers to make the assertions expressive (e.g., \`ASSERT_EQ\`, \`EXPECT_TRUE\`, \`ASSERT_THROW\`).
   `;
   return { ...parts, header: parts.header + goals };

@@ -1,34 +1,43 @@
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import fg from 'fast-glob';
+import { getBaseName, CPP_TEST_EXTENSIONS } from './fileExtensions.js';
 
 /**
- * Try hard to guess the companion *_test.cpp* for a source file.
+ * Try hard to guess the companion test file for a C++ source file.
  *  1.  Conventional siblings   (<name>_test.cpp, test_<name>.cpp …)
- *  2.  Recursive scan in common “test” folders.
+ *  2.  Recursive scan in common "test" folders.
  *  3.  Final fallback: undefined (caller may create a fresh file).
  */
 export async function findTestFile(
   srcFile: string,
   rootDir: string
 ): Promise<string | undefined> {
-  const base   = path.basename(srcFile, '.cpp');          // foo
+  const base   = getBaseName(srcFile);          // foo
   const dir    = path.dirname(srcFile);
 
-  const directCandidates = [
-    `${base}_test.cpp`,
-    `test_${base}.cpp`,
-    `${base}.test.cpp`,
-    `${base}Test.cpp`,
-  ].map(f => path.join(dir, f));
+  // Generate candidates for all test extensions
+  const directCandidates: string[] = [];
+  for (const ext of CPP_TEST_EXTENSIONS) {
+    directCandidates.push(
+      `${base}_test${ext}`,
+      `test_${base}${ext}`,
+      `${base}.test${ext}`,
+      `${base}Test${ext}`,
+    );
+  }
+  const fullCandidates = directCandidates.map(f => path.join(dir, f));
 
-  for (const c of directCandidates) if (existsSync(c)) return c;
+  for (const c of fullCandidates) if (existsSync(c)) return c;
 
   // ―― scan the repository (kept tiny & async with fast-glob) ----
-  const globPatterns = [
-    `**/{test,tests,unittests,ut}/**/*${base}*test*.cpp`,
-    `**/*${base}*test*.cpp`,
-  ];
+  const globPatterns: string[] = [];
+  for (const ext of CPP_TEST_EXTENSIONS) {
+    globPatterns.push(
+      `**/{test,tests,unittests,ut}/**/*${base}*test*${ext}`,
+      `**/*${base}*test*${ext}`,
+    );
+  }
 
   const hits = await fg(globPatterns, {
     cwd      : rootDir,
