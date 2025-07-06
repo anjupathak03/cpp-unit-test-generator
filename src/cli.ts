@@ -36,7 +36,9 @@ const cli = yargs(hideBin(process.argv))
         srcText     : src,
         missedLines : [],
         prevFailures: [],
-        testText    : testText
+        testText    : testText,
+        testPath    : testFile,
+        root        : argv.root
       });
       console.log(prompt)
     })
@@ -55,7 +57,9 @@ const cli = yargs(hideBin(process.argv))
         srcText     : src,
         missedLines : [],
         prevFailures: [],
-        testText    : testText
+        testText    : testText,
+        testPath    : testFile,
+        root        : argv.root
       });
       const reply  = await llmFetch(prompt);
       console.log(reply);

@@ -1,6 +1,7 @@
 import dedent from 'dedent';
 import { assemble, PromptParts } from './parts.js';
 import { defaultMiddleware, BuildCtx, Middleware } from './middleware.js';
+import path from 'node:path';
 
 export interface BuildOpts {
   srcPath     : string;
@@ -9,6 +10,8 @@ export interface BuildOpts {
   prevFailures: string[];
   middlewares?: Middleware[];
   testText?   : string;
+  testPath?   : string;
+  root?       : string;
 }
 
 export function buildPrompt(opts: BuildOpts): string {
@@ -19,6 +22,11 @@ export function buildPrompt(opts: BuildOpts): string {
   ? opts.testText
   : 'No existing test file provided.';
 
+  // Calculate relative paths
+  const root = opts.root || '.';
+  const srcRelativePath = path.relative(root, opts.srcPath);
+  const testRelativePath = opts.testPath ? path.relative(root, opts.testPath) : 'No test file specified';
+
   const parts: PromptParts = {
     header: dedent`
       C++ Unit Test Generation Request
@@ -26,9 +34,11 @@ export function buildPrompt(opts: BuildOpts): string {
     `,
     source: 
       `=== C++ Source Code to be Tested: ===
+      File: ${srcRelativePath}
       ${opts.srcText}
     `,
     existing: `=== CURRENT_TEST_FILE ===
+      File: ${testRelativePath}
       ${existingContent}`,
     coverage: dedent`
       === TARGET_LINES ===

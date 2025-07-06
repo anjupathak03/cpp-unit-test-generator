@@ -34,7 +34,9 @@ export async function run(cfg: Cfg, signal: AbortSignal, bus = new EventBus()) {
       srcText     : srcOrig,
       missedLines : cov.missedLines,
       prevFailures: [],
-      testText    : testOrig
+      testText    : testOrig,
+      testPath    : testPath,
+      root        : cfg.root
     });
 
     const reply = await llmFetch(prompt);
