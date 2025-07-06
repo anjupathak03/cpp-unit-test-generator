@@ -21,6 +21,7 @@ export interface TestFixConfig {
   root: string;
   maxAttempts?: number;
   signal: AbortSignal;
+  gpp?: boolean;
 }
 
 /**
@@ -28,8 +29,8 @@ export interface TestFixConfig {
  * @param config Configuration for test fixing
  * @returns Result of the fixing attempt
  */
-export async function fixTestFile(config: TestFixConfig): Promise<TestFixResult> {
-  const { testFile, srcFile, root, maxAttempts = 3, signal } = config;
+export async function fixTestFile(config: TestFixConfig & { gpp?: boolean }): Promise<TestFixResult> {
+  const { testFile, srcFile, root, maxAttempts = 3, signal, gpp } = config;
   
   console.log(chalk.blue(`🔧 Starting test file fixing process...`));
   console.log(chalk.gray(`📝 Test file: ${testFile}`));
@@ -45,10 +46,12 @@ export async function fixTestFile(config: TestFixConfig): Promise<TestFixResult>
 
     // Test current content with error capture
     console.log(chalk.gray('  🔨 Testing current test file...'));
-    const compilationResult = await compileAndRun({ 
-      root, 
-      testTarget: 'ut_bin'
-    }, signal);
+    let compilationResult;
+    if (gpp) {
+      compilationResult = await compileAndRun({ root, testFile, mode: 'g++' }, signal);
+    } else {
+      compilationResult = await compileAndRun({ root, testTarget: 'ut_bin' }, signal);
+    }
     
     if (compilationResult.success) {
       console.log(chalk.green(`  ✅ Test file compiles and runs successfully!`));
@@ -97,10 +100,12 @@ export async function fixTestFile(config: TestFixConfig): Promise<TestFixResult>
         
         // Test the fixed content
         console.log(chalk.gray('  🔨 Testing fixed test file...'));
-        const fixedTestResult = await compileAndRun({ 
-          root, 
-          testTarget: 'ut_bin'
-        }, signal);
+        let fixedTestResult;
+        if (gpp) {
+          fixedTestResult = await compileAndRun({ root, testFile: tempTestFile, mode: 'g++' }, signal);
+        } else {
+          fixedTestResult = await compileAndRun({ root, testTarget: 'ut_bin' }, signal);
+        }
         
         if (fixedTestResult.success) {
           console.log(chalk.green(`  ✅ Fixed test file compiles and runs successfully!`));
@@ -218,7 +223,7 @@ export async function applyAndValidateTestsWithFixing({
 }: {
   testFile: string,
   newTests: NewTestYaml[],
-  cfg: { testFile: string; srcFile: string; root: string },
+  cfg: { testFile: string; srcFile: string; root: string; gpp?: boolean },
   signal: AbortSignal,
   bypassValidation?: boolean,
   enableAutoFix?: boolean,
@@ -262,7 +267,12 @@ export async function applyAndValidateTestsWithFixing({
 
       // Validate the replica by compiling and running
       console.log(chalk.gray('  🔨 Validating replica by compiling and running'));
-      let compiled = await compileAndRun({ root: cfg.root, testTarget: 'ut_bin' }, signal);
+      let compiled;
+      if (cfg.gpp) {
+        compiled = await compileAndRun({ root: cfg.root, testFile: replicaPath, mode: 'g++' }, signal);
+      } else {
+        compiled = await compileAndRun({ root: cfg.root, testTarget: 'ut_bin' }, signal);
+      }
       
       if (compiled) {
         // Commit: write the replica back to the main test file
@@ -283,17 +293,17 @@ export async function applyAndValidateTestsWithFixing({
             srcFile: cfg.srcFile,
             root: cfg.root,
             maxAttempts: maxFixAttempts,
-            signal
+            signal,
+            gpp: cfg.gpp
           });
           
           if (fixResult.success && fixResult.finalContent) {
             console.log(chalk.green(`  ✅ Auto-fix successful after ${fixResult.attempts} attempts`));
             
             // Test the fixed content
-            const fixedCompiled = await compileAndRun({ 
-              root: cfg.root, 
-              testTarget: 'ut_bin'
-            }, signal);
+            const fixedCompiled = cfg.gpp
+              ? await compileAndRun({ root: cfg.root, testFile: replicaPath, mode: 'g++' }, signal)
+              : await compileAndRun({ root: cfg.root, testTarget: 'ut_bin' }, signal);
             
             if (fixedCompiled.success) {
               // Commit the fixed content

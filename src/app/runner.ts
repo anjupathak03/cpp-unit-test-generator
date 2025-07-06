@@ -14,6 +14,7 @@ export interface Cfg {
   bypassValidation?: boolean;
   enableAutoFix?: boolean;
   maxFixAttempts?: number;
+  gpp?: boolean; // Use g++ single file mode
 }
 
 export async function run(cfg: Cfg, signal: AbortSignal) {

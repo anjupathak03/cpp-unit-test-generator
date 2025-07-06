@@ -62,7 +62,7 @@ npx tsx src/cli.ts llm --src <source.cpp> [--root <project-root>] [--testFile <t
 Builds and runs the Google Test target.
 
 ```sh
-npx tsx src/cli.ts compile [--root <project-root>] [--target <test-binary>]
+npx tsx src/cli.ts compile [--root <project-root>] [--testFile <test-file-path>]
 ```
 
 #### 5. `fix`
@@ -102,12 +102,5 @@ npx tsx src/cli.ts fix --test <test.cpp> --src <source.cpp> [--root <project-roo
 - [ollama](https://www.npmjs.com/package/ollama) - LLM API client
 - [fast-glob](https://www.npmjs.com/package/fast-glob) - File globbing
 - [js-yaml](https://www.npmjs.com/package/js-yaml) - YAML parsing
-- [ajv](https://www.npmjs.com/package/ajv) - JSON schema validation
-
-## License
-
-ISC
-
----
 
 *This project is under active development. Contributions and feedback are welcome!* 

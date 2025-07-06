@@ -94,17 +94,17 @@ const cli = yargs(hideBin(process.argv))
 
   .command('compile', 'build & run Google-Test target', y => y
       .option('root',   { type:'string', default:'.' })
-      .option('target', { type:'string', default:'ut_bin' }),
+      .option('testFile', { type:'string', demandOption: true }),
     async argv => {
       console.log(chalk.blue('🔨 Starting compilation and test run...'));
       console.log(chalk.gray(`📁 Root directory: ${argv.root}`));
-      console.log(chalk.gray(`🎯 Test target: ${argv.target}`));
+      console.log(chalk.gray(`🎯 Test target: ${argv.testFile}`));
       
       const ac = new AbortController();
       process.on('SIGINT', () => ac.abort());
       
       console.log(chalk.blue('⚙️  Building project...'));
-      const ok = await compileAndRun({ root: argv.root, testTarget: argv.target }, ac.signal);
+      const ok = await compileAndRun({ root: argv.root, testFile: argv.testFile }, ac.signal);
       
       if (ok) {
         console.log(chalk.green('🎉 PASS - All tests passed!'));
@@ -118,7 +118,8 @@ const cli = yargs(hideBin(process.argv))
       .option('root',    { type:'string', default:'.' })
       .option('bypassValidation', { type:'boolean', default:true, desc:'Skip validation and directly write tests' })
       .option('enableAutoFix', { type:'boolean', default:true, desc:'Enable automatic test fixing when compilation fails' })
-            .option('maxFixAttempts', { type:'number', default:3, desc:'Maximum number of fix attempts' }),
+      .option('maxFixAttempts', { type:'number', default:3, desc:'Maximum number of fix attempts' })
+      .option('gpp', { type:'boolean', default:false, desc:'Use g++ to build and run only the generated test file' }),
       async argv => {
       console.log(chalk.blue('🚀 Starting full test generation workflow...'));
       console.log(chalk.gray(`📁 Source file: ${argv.src}`));
@@ -126,6 +127,7 @@ const cli = yargs(hideBin(process.argv))
       console.log(chalk.gray(`⚡ Bypass validation: ${argv.bypassValidation}`));
       console.log(chalk.gray(`🔧 Auto-fix enabled: ${argv.enableAutoFix}`));
       console.log(chalk.gray(`🔄 Max fix attempts: ${argv.maxFixAttempts}`));
+      console.log(chalk.gray(`🛠️  g++ single file mode: ${argv.gpp}`));
       const ac = new AbortController();
       process.on('SIGINT', () => ac.abort());
       
@@ -135,7 +137,8 @@ const cli = yargs(hideBin(process.argv))
         root    : argv.root,
         bypassValidation: argv.bypassValidation,
         enableAutoFix: argv.enableAutoFix,
-        maxFixAttempts: argv.maxFixAttempts
+        maxFixAttempts: argv.maxFixAttempts,
+        gpp: argv.gpp
       }, ac.signal);
     })
 
