@@ -118,15 +118,14 @@ const cli = yargs(hideBin(process.argv))
       .option('root',    { type:'string', default:'.' })
       .option('bypassValidation', { type:'boolean', default:true, desc:'Skip validation and directly write tests' })
       .option('enableAutoFix', { type:'boolean', default:true, desc:'Enable automatic test fixing when compilation fails' })
-      .option('maxFixAttempts', { type:'number', default:3, desc:'Maximum number of fix attempts' }),
-    async argv => {
+            .option('maxFixAttempts', { type:'number', default:3, desc:'Maximum number of fix attempts' }),
+      async argv => {
       console.log(chalk.blue('🚀 Starting full test generation workflow...'));
       console.log(chalk.gray(`📁 Source file: ${argv.src}`));
       console.log(chalk.gray(`📁 Root directory: ${argv.root}`));
       console.log(chalk.gray(`⚡ Bypass validation: ${argv.bypassValidation}`));
       console.log(chalk.gray(`🔧 Auto-fix enabled: ${argv.enableAutoFix}`));
       console.log(chalk.gray(`🔄 Max fix attempts: ${argv.maxFixAttempts}`));
-      
       const ac = new AbortController();
       process.on('SIGINT', () => ac.abort());
       
@@ -140,18 +139,17 @@ const cli = yargs(hideBin(process.argv))
       }, ac.signal);
     })
 
-  .command('fix', 'attempt to fix a failing test file', y => y
-      .option('test',    { type:'string', demandOption:true, desc:'Path to the test file to fix' })
-      .option('src',     { type:'string', demandOption:true, desc:'Path to the source file being tested' })
-      .option('root',    { type:'string', default:'.', desc:'Project root directory' })
-      .option('maxAttempts', { type:'number', default:3, desc:'Maximum number of fix attempts' }),
-    async argv => {
+    .command('fix', 'attempt to fix a failing test file', y => y
+    .option('test',    { type:'string', demandOption:true, desc:'Path to the test file to fix' })
+    .option('src',     { type:'string', demandOption:true, desc:'Path to the source file being tested' })
+    .option('root',    { type:'string', default:'.', desc:'Project root directory' })
+          .option('maxAttempts', { type:'number', default:3, desc:'Maximum number of fix attempts' }),
+      async argv => {
       console.log(chalk.blue('🔧 Starting test file fixing...'));
       console.log(chalk.gray(`📝 Test file: ${argv.test}`));
       console.log(chalk.gray(`📝 Source file: ${argv.src}`));
       console.log(chalk.gray(`📁 Root directory: ${argv.root}`));
       console.log(chalk.gray(`🔄 Max attempts: ${argv.maxAttempts}`));
-      
       const ac = new AbortController();
       process.on('SIGINT', () => ac.abort());
       
