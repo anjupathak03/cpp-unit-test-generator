@@ -3,6 +3,7 @@ import { buildPrompt } from './prompt/builder.js';
 import { fetch as llmFetch } from './llm/client.js';
 import { findTestFile } from './utils/findTestFile.js';
 import { applyAndValidateTests } from './utils/applyAndValidateTests.js';
+import { applyAndValidateTestsWithFixing } from './utils/testFixer.js';
 import { replaceWithTestExtension } from './utils/fileExtensions.js';
 import chalk from 'chalk';
 
@@ -11,6 +12,8 @@ export interface Cfg {
   testFile: string;
   root: string;
   bypassValidation?: boolean;
+  enableAutoFix?: boolean;
+  maxFixAttempts?: number;
 }
 
 export async function run(cfg: Cfg, signal: AbortSignal) {
@@ -59,19 +62,35 @@ export async function run(cfg: Cfg, signal: AbortSignal) {
   });
 
   console.log(chalk.blue('🔧 Applying and validating tests...'));
-  const results = await applyAndValidateTests({
-    testFile: testPath,
-    newTests: reply.tests,
-    cfg: { ...cfg, testFile: testPath },
-    signal,
-    bypassValidation: cfg.bypassValidation ?? true
-  });
+  
+  // Use the enhanced version with auto-fixing if enabled
+  const useAutoFix = cfg.enableAutoFix ?? true;
+  const maxFixAttempts = cfg.maxFixAttempts ?? 3;
+  
+  const results = useAutoFix 
+    ? await applyAndValidateTestsWithFixing({
+        testFile: testPath,
+        newTests: reply.tests,
+        cfg: { ...cfg, testFile: testPath },
+        signal,
+        bypassValidation: cfg.bypassValidation ?? true,
+        enableAutoFix: useAutoFix,
+        maxFixAttempts
+      })
+    : await applyAndValidateTests({
+        testFile: testPath,
+        newTests: reply.tests,
+        cfg: { ...cfg, testFile: testPath },
+        signal,
+        bypassValidation: cfg.bypassValidation ?? true
+      });
 
   console.log(chalk.blue('📋 Test Results:'));
   // Log results for each test
   for (const r of results) {
     if (r.verdict === 'pass') {
-      console.log(chalk.green(`  ✅ ${r.name}`));
+      const fixedIndicator = (r as any).fixed ? ' (auto-fixed)' : '';
+      console.log(chalk.green(`  ✅ ${r.name}${fixedIndicator}`));
     } else {
       console.log(chalk.red(`  ❌ ${r.name}`));
     }
