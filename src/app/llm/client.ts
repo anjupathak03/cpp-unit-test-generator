@@ -48,6 +48,23 @@ export async function fetch(prompt: string): Promise<LlmReply> {
       throw new Error('Response does not contain tests array');
     }
 
+    // Fix the includes field for each test - convert from YAML block scalar to array
+    for (const test of parsed.tests) {
+      if (test.includes && typeof test.includes === 'string') {
+        // Parse the YAML block scalar string into an array
+        const includesString = test.includes as string;
+        const includesLines = includesString
+          .split('\n')
+          .map((line: string) => line.trim())
+          .filter((line: string) => line.startsWith('- '))
+          .map((line: string) => line.substring(2).trim()); // Remove the "- " prefix
+        
+        (test as any).includes = includesLines;
+      } else if (!test.includes) {
+        (test as any).includes = [];
+      }
+    }
+
     return parsed;
   } catch (error) {
     throw new Error(`Failed to parse LLM response as YAML: ${error instanceof Error ? error.message : 'Unknown error'}`);

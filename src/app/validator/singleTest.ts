@@ -9,9 +9,6 @@ export async function runOne(opts: {
   coverageBase: CoverageSnap;
 }, signal: AbortSignal) {
 
-  const offset = await fsx.findOrCreateCursor(opts.cfg.testFile);
-  await fsx.insertAt(opts.cfg.testFile, offset, opts.snippet.code);
-
   const compiled = await compileAndRun({ root: opts.cfg.root, testTarget: 'ut_bin' }, signal);
   if (!compiled)
     return { verdict: 'fail' as const, coverage: opts.coverageBase };
