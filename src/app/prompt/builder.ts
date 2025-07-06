@@ -59,6 +59,7 @@ export function buildPrompt(opts: BuildOpts): string {
           includes: |
             - <gtest/gtest.h>
             - "foo.h"
+            - <standard libraries>
           code: |
             TEST(Foo, DoesX) { … }
     `,
