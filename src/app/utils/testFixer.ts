@@ -48,7 +48,7 @@ export async function fixTestFile(config: TestFixConfig & { gpp?: boolean }): Pr
     console.log(chalk.gray('  🔨 Testing current test file...'));
     let compilationResult;
     if (gpp) {
-      compilationResult = await compileAndRun({ root, testFile, mode: 'g++' }, signal);
+      compilationResult = await compileAndRun({ root, testFile, srcFile, mode: 'g++' }, signal);
     } else {
       compilationResult = await compileAndRun({ root, testTarget: 'ut_bin' }, signal);
     }
@@ -102,7 +102,7 @@ export async function fixTestFile(config: TestFixConfig & { gpp?: boolean }): Pr
         console.log(chalk.gray('  🔨 Testing fixed test file...'));
         let fixedTestResult;
         if (gpp) {
-          fixedTestResult = await compileAndRun({ root, testFile: tempTestFile, mode: 'g++' }, signal);
+          fixedTestResult = await compileAndRun({ root, testFile: tempTestFile, srcFile, mode: 'g++' }, signal);
         } else {
           fixedTestResult = await compileAndRun({ root, testTarget: 'ut_bin' }, signal);
         }
@@ -250,7 +250,11 @@ export async function applyAndValidateTestsWithFixing({
     } else {
       // Use replica approach for validation with auto-fixing
       console.log(chalk.gray('  🔄 Using replica approach for validation'));
-      const replicaPath = testFile + '.replica';
+
+      const ext = path.extname(testFile);                         // e.g., '.cpp'
+      const base = testFile.slice(0, -ext.length);                // 'foo_test'
+      const replicaPath = `${base}.replica${ext}`;               
+      console.log(chalk.gray(`  📂 Replica path: ${replicaPath}`));
       
       // Copy the current test file to the replica
       if (fsx.exists(testFile)) {
@@ -269,12 +273,12 @@ export async function applyAndValidateTestsWithFixing({
       console.log(chalk.gray('  🔨 Validating replica by compiling and running'));
       let compiled;
       if (cfg.gpp) {
-        compiled = await compileAndRun({ root: cfg.root, testFile: replicaPath, mode: 'g++' }, signal);
+        compiled = await compileAndRun({ root: cfg.root, testFile: replicaPath, srcFile: cfg.srcFile, mode: 'g++' }, signal);
       } else {
         compiled = await compileAndRun({ root: cfg.root, testTarget: 'ut_bin' }, signal);
       }
       
-      if (compiled) {
+      if (compiled.success) {
         // Commit: write the replica back to the main test file
         console.log(chalk.gray('  ✅ Validation passed - committing changes'));
         const replicaContent = await fsx.read(replicaPath);
@@ -302,7 +306,7 @@ export async function applyAndValidateTestsWithFixing({
             
             // Test the fixed content
             const fixedCompiled = cfg.gpp
-              ? await compileAndRun({ root: cfg.root, testFile: replicaPath, mode: 'g++' }, signal)
+              ? await compileAndRun({ root: cfg.root, testFile: replicaPath, srcFile: cfg.srcFile, mode: 'g++' }, signal)
               : await compileAndRun({ root: cfg.root, testTarget: 'ut_bin' }, signal);
             
             if (fixedCompiled.success) {
