@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import chalk from 'chalk';
 
 export interface CompilationResult {
@@ -20,8 +22,12 @@ export async function compileAndRun(cfg: {
   if (mode === 'g++' && cfg.testFile) {
     // --- Single file build/run with g++ ---
     const testFile = cfg.testFile;
-    const outBin = `/tmp/test_bin_${Math.random().toString(36).slice(2)}`;
-    const gppFlags = cfg.gppFlags || ['-std=c++17', '-lgtest_main', '-lgtest_main', '-lgtest', '-lpthread'];
+    
+    // This creates a valid path like 'C:\Users\user\AppData\Local\Temp\test_bin_...' on Windows
+    // or '/tmp/test_bin_...' on Linux/macOS.
+    const outBin = join(tmpdir(), `test_bin_${Math.random().toString(36).slice(2)}`);
+    
+    const gppFlags = cfg.gppFlags || ['-std=c++17', '-lgtest_main', '-lgtest', '-lpthread'];
     console.log(chalk.blue('🔨 Compiling single test file with g++...'));
     console.log(chalk.gray(`📄 Test file: ${testFile}`));
     

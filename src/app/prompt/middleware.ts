@@ -35,6 +35,10 @@ function injectGoalsConstraints(parts: PromptParts, ctx: BuildCtx): PromptParts 
       - Adhere to Google's C++ Style Guide for the generated test code.
       - Do not use any mock objects unless explicitly requested.
       - Two tests name can never be same
+      - Use Different test name that does not exists in the test file
+      - only new test will be created, don't modify tests
+      - create multiple tests and give the output in the format specified below. 
+      - each element in the output yaml array should contain a single TEST block in code section
 
     TESTING GUIDELINES:
       - For each function or method, create a separate \`TEST\` or \`TEST_F\`

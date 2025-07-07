@@ -61,7 +61,6 @@ export async function fetch(prompt: string, signal?: AbortSignal): Promise<LlmRe
   try {
     // Parse the YAML content
     const parsed = yaml.load(yamlContent) as LlmReply;
-    
     // Validate that we have the expected structure
     if (!parsed || typeof parsed !== 'object') {
       console.log(chalk.red('❌ Parsed response is not an object'));

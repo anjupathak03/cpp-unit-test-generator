@@ -59,7 +59,16 @@ export function buildPrompt(opts: BuildOpts): string {
           includes: |
             - <gtest/gtest.h>
             - "foo.h"
-            - <standard libraries>
+            - any other libraries needed
+          code: |
+            TEST(Foo, DoesX) { … }
+        - name: CamelCaseName456
+          goal: |
+            Short behaviour description.
+          includes: |
+            - <gtest/gtest.h>
+            - "foo.h"
+            - any other libraries needed
           code: |
             TEST(Foo, DoesX) { … }
     `,
