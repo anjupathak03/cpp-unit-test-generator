@@ -5,7 +5,7 @@ import yaml from 'js-yaml';
 import chalk from 'chalk';
 
 // Initialize Ollama instance with the specific host
-const ollama = new Ollama({ host: 'http://192.168.176.69:11434' });
+const ollama = new Ollama({ host: 'http://localhost:11434' });
 
 export async function fetch(prompt: string, signal?: AbortSignal): Promise<LlmReply> {
   console.log(chalk.blue('🤖 Initializing LLM request...'));

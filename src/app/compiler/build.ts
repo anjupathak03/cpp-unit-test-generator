@@ -12,6 +12,7 @@ export async function compileAndRun(cfg: {
   root: string;
   testTarget?: string;   // ex: "ut_bin"
   testFile?: string;     // path to a single test file
+  srcFile?: string;      // path to corresponding source file
   mode?: 'cmake' | 'g++'; // build mode
   gppFlags?: string[];   // extra flags for g++
 }, signal: AbortSignal): Promise<CompilationResult> {
@@ -19,12 +20,21 @@ export async function compileAndRun(cfg: {
   if (mode === 'g++' && cfg.testFile) {
     // --- Single file build/run with g++ ---
     const testFile = cfg.testFile;
-    const outBin = `/tmp/utg_test_bin_${Math.random().toString(36).slice(2)}`;
-    const gppFlags = cfg.gppFlags || ['-std=c++17', '-lgtest', '-lpthread'];
+    const outBin = `/tmp/test_bin_${Math.random().toString(36).slice(2)}`;
+    const gppFlags = cfg.gppFlags || ['-std=c++17', '-lgtest_main', '-lgtest_main', '-lgtest', '-lpthread'];
     console.log(chalk.blue('🔨 Compiling single test file with g++...'));
     console.log(chalk.gray(`📄 Test file: ${testFile}`));
+    
+    // Build compile arguments - include source file if provided
+    const compileFiles = [testFile];
+    if (cfg.srcFile) {
+      compileFiles.push(cfg.srcFile);
+      console.log(chalk.gray(`📄 Source file: ${cfg.srcFile}`));
+    }
+    
     console.log(chalk.gray(`⚙️  g++ flags: ${gppFlags.join(' ')}`));
-    const compileArgs = ['-o', outBin, testFile, ...gppFlags];
+    const compileArgs = ['-o', outBin, ...compileFiles, ...gppFlags];
+    console.log(chalk.gray(`🔧 Compile command: g++ ${compileArgs.join(' ')}`));
     const compile = spawn('g++', compileArgs, {
       cwd: cfg.root,
       signal,
@@ -41,6 +51,8 @@ export async function compileAndRun(cfg: {
     const [compileCode] = await once(compile, 'exit');
     if (compileCode !== 0) {
       console.log(chalk.red('❌ g++ compilation failed'));
+      console.log(compileStdout ? chalk.gray(`Stdout: ${compileStdout}`) : '');
+      console.log(compileStderr ? chalk.gray(`Stderr: ${compileStderr}`) : '');
       const errors = compileStderr || compileStdout || 'Unknown g++ compilation error';
       return {
         success: false,
@@ -78,7 +90,7 @@ export async function compileAndRun(cfg: {
       output: runStdout
     };
   } else {
-    // --- Default: CMake build ---
+    // --- CMake build (experimental) ---
     console.log(chalk.blue('🔨 Starting compilation with error capture...'));
     console.log(chalk.gray(`📁 Working directory: ${cfg.root}`));
     console.log(chalk.gray(`🎯 Target: ${cfg.testTarget}`));

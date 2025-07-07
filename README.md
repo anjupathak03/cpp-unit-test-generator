@@ -9,6 +9,50 @@ A CLI tool to automatically generate, validate, and fix C++ unit tests using LLM
 - **Auto-fix**: Attempt to fix failing tests using LLM suggestions.
 - **Google Test Integration**: Compile and run generated tests using Google Test.
 
+## Prerequisites
+
+### 1. Install and Setup Ollama with Gemma 7B Model
+
+This tool requires Ollama to be running with the Gemma 7B model for LLM integration.
+
+1. **Install Ollama:**
+   Visit [https://ollama.ai](https://ollama.ai) and follow the installation instructions for your platform.
+
+2. **Pull the Gemma 7B model:**
+   ```sh
+   ollama pull gemma:7b
+   ```
+
+3. **Start Ollama server:**
+   ```sh
+   ollama serve
+   ```
+   Keep this running in a separate terminal while using the tool.
+
+### 2. Install Google Test
+
+You need Google Test installed on your system for compiling and running the generated tests.
+
+**On macOS:**
+```sh
+git clone https://github.com/google/googletest
+cd googletest
+mkdir build
+cd build
+cmake ..
+make
+make install
+```
+
+**On Ubuntu/Debian:**
+```sh
+sudo apt-get update
+sudo apt-get install libgtest-dev libgtest-main-dev
+```
+
+**On other systems:**
+Follow the [Google Test installation guide](https://github.com/google/googletest) for your platform.
+
 ## Installation
 
 1. **Clone the repository:**
@@ -21,6 +65,27 @@ A CLI tool to automatically generate, validate, and fix C++ unit tests using LLM
    npm install
    ```
 3. **(Optional) Build or install Google Test** in your C++ project if not already present.
+
+## Try it ! - Example Workflow
+
+**Quick Start Example:**
+```sh
+npm run start -- run --src sample.cpp --bypassValidation false
+```
+
+**Detailed Workflow:**
+1. Generate and apply tests for a source file:
+   ```sh
+   npx tsx src/cli.ts run --src src/foo.cpp
+   ```
+2. If tests fail, auto-fix them:
+   ```sh
+   npx tsx src/cli.ts fix --test src/foo.test.cpp --src src/foo.cpp
+   ```
+3. Compile and run all tests:
+   ```sh
+   npx tsx src/cli.ts compile
+   ```
 
 ## Usage
 
@@ -71,21 +136,6 @@ Attempts to fix a failing test file using the LLM.
 ```sh
 npx tsx src/cli.ts fix --test <test.cpp> --src <source.cpp> [--root <project-root>] [--maxAttempts <n>]
 ```
-
-## Example Workflow
-
-1. Generate and apply tests for a source file:
-   ```sh
-   npx tsx src/cli.ts run --src src/foo.cpp
-   ```
-2. If tests fail, auto-fix them:
-   ```sh
-   npx tsx src/cli.ts fix --test src/foo.test.cpp --src src/foo.cpp
-   ```
-3. Compile and run all tests:
-   ```sh
-   npx tsx src/cli.ts compile
-   ```
 
 ## Project Structure
 - `src/cli.ts` - Main CLI entry point

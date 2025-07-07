@@ -94,19 +94,30 @@ const cli = yargs(hideBin(process.argv))
 
   .command('compile', 'build & run Google-Test target', y => y
       .option('root',   { type:'string', default:'.' })
-      .option('testFile', { type:'string', demandOption: true }),
+      .option('testFile', { type:'string', demandOption: true })
+      .option('srcFile', { type:'string', desc: 'Source file to compile with test file (for g++ mode)' })
+      .option('gppFlags', { type:'array', desc: 'Custom g++ flags (when using g++ mode)' }),
     async argv => {
       console.log(chalk.blue('🔨 Starting compilation and test run...'));
       console.log(chalk.gray(`📁 Root directory: ${argv.root}`));
       console.log(chalk.gray(`🎯 Test target: ${argv.testFile}`));
+      if (argv.srcFile) {
+        console.log(chalk.gray(`📄 Source file: ${argv.srcFile}`));
+      }
       
       const ac = new AbortController();
       process.on('SIGINT', () => ac.abort());
       
       console.log(chalk.blue('⚙️  Building project...'));
-      const ok = await compileAndRun({ root: argv.root, testFile: argv.testFile }, ac.signal);
+      const ok = await compileAndRun({ 
+        root: argv.root, 
+        testFile: argv.testFile,
+        srcFile: argv.srcFile,
+        gppFlags: argv.gppFlags as string[] | undefined,
+        mode: argv.srcFile ? 'g++' : undefined
+      }, ac.signal);
       
-      if (ok) {
+      if (ok.success) {
         console.log(chalk.green('🎉 PASS - All tests passed!'));
       } else {
         console.log(chalk.red('❌ FAIL - Tests failed or compilation error'));
@@ -119,7 +130,7 @@ const cli = yargs(hideBin(process.argv))
       .option('bypassValidation', { type:'boolean', default:true, desc:'Skip validation and directly write tests' })
       .option('enableAutoFix', { type:'boolean', default:true, desc:'Enable automatic test fixing when compilation fails' })
       .option('maxFixAttempts', { type:'number', default:3, desc:'Maximum number of fix attempts' })
-      .option('gpp', { type:'boolean', default:false, desc:'Use g++ to build and run only the generated test file' }),
+      .option('gpp', { type:'boolean', default:true, desc:'Use g++ to build and run only the generated test file' }),
       async argv => {
       console.log(chalk.blue('🚀 Starting full test generation workflow...'));
       console.log(chalk.gray(`📁 Source file: ${argv.src}`));

@@ -47,8 +47,12 @@ export async function applyAndValidateTests({
     } else {
       // Use replica approach for validation
       console.log(chalk.gray('  🔄 Using replica approach for validation'));
-      const replicaPath = testFile + '.replica';
-      
+
+      const ext = path.extname(testFile);                         // e.g., '.cpp'
+      const base = testFile.slice(0, -ext.length);                // 'foo_test'
+      const replicaPath = `${base}.replica${ext}`;               
+      console.log(chalk.gray(`  📂 Replica path: ${replicaPath}`));
+
       // Copy the current test file to the replica
       if (fsx.exists(testFile)) {
         console.log(chalk.gray('  📋 Copying existing test file to replica'));
@@ -66,12 +70,12 @@ export async function applyAndValidateTests({
       console.log(chalk.gray('  🔨 Validating replica by compiling and running'));
       let compiled;
       if ((cfg as any).gpp) {
-        compiled = await compileAndRun({ root: cfg.root, testFile: replicaPath, mode: 'g++' }, signal);
+        compiled = await compileAndRun({ root: cfg.root, testFile: replicaPath, srcFile: cfg.srcFile, mode: 'g++' }, signal);
       } else {
         compiled = await compileAndRun({ root: cfg.root, testTarget: 'ut_bin' }, signal);
       }
-      
-      if (compiled) {
+
+      if (compiled.success) {
         // Commit: write the replica back to the main test file
         console.log(chalk.gray('  ✅ Validation passed - committing changes'));
         const replicaContent = await fsx.read(replicaPath);

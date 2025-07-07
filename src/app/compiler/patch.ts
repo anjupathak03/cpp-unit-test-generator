@@ -4,7 +4,7 @@ import { promises as fsp } from 'node:fs';
 
 export async function tryApply(file: string, patchTxt: string, signal: AbortSignal): Promise<boolean> {
   // Save patch to tmp
-  const tmp = await fsp.mkdtemp('/tmp/utg-patch-');
+  const tmp = await fsp.mkdtemp('/tmp/patch-');
   const patchPath = `${tmp}/patch.diff`;
   await fsp.writeFile(patchPath, patchTxt, 'utf8');
 
